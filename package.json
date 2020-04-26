@@ -21,11 +21,17 @@
     "react-scripts": "3.4.1"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "run-p start:client start:server",
+    "start:client": "react-scripts start",
+    "start:server": "node server.js",
+    "//": [
+      "npm run start:serverwe are saying to node to point server.js in order to see if the api works"
+    ],
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
+  "proxy": "http://localhost:3001",
   "eslintConfig": {
     "extends": "react-app"
   },
