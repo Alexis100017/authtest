@@ -5,7 +5,6 @@ class Callback extends React.Component {
     //handle auth if expected values in the URL
     console.log("Callback");
     if (/access_token| id_token | error/.test(this.props.location.hash)) {
-      console.log("Callback FUNCTION");
       this.props.auth.handleAuthentication();
     }
   }
