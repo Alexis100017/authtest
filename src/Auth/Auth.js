@@ -4,6 +4,7 @@ export default class Auth {
   constructor(history) {
     // console.log(process.env.REACT_APP_CLIENT_ID);
     this.history = history;
+    this.userProfile = null;
     this.auth0 = new auth0.WebAuth({
       domain: process.env.REACT_APP_AUTH0_DOMAIN,
       clientID: process.env.REACT_APP_AUTH0_CLIENT_ID,
@@ -16,7 +17,6 @@ export default class Auth {
     this.auth0.authorize(); //method available in the auth0 web auth, when this method is called this will redirect the browser to the auth0login page
   };
   handleAuthentication = () => {
-    console.log("another");
     this.auth0.parseHash((error, authResult) => {
       if (authResult && authResult.accessToken && authResult.idToken) {
         this.setSession(authResult); // Create session and storage the token
@@ -33,22 +33,47 @@ export default class Auth {
     const expireAt = JSON.stringify(
       authResult.expiresIn * 1000 + new Date().getTime() //this is the way to calcute the expire time in unix epoch time (number of ms since 1970)
     ); //   authResult.expiresIn =time en seconds
+    //  console.log(authResult);
     localStorage.setItem("access_token", authResult.accessToken);
     localStorage.setItem("id_token", authResult.idToken);
-    localStorage.setItem("expires_at", authResult.expiresIn);
+    localStorage.setItem("expires_at", expireAt);
+  };
+  isAuthenticated = () => {
+    const expireAt = JSON.parse(localStorage.getItem("expires_at"));
+    return new Date().getTime() < expireAt;
+  };
+  logOut = () => {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("id_token");
+    localStorage.removeItem("expires_at");
+    this.userProfile = null;
+    //this is how we log out the user session localy, however its not logout i nthe sv
+    //in summary we are removing the local store but nor the cookie, in order to erase the cookie and also log out from the sv
+    this.auth0.logout({
+      clientID: process.env.REACT_APP_AUTH0_CLIENT_ID,
+      returnTo: "http://localhost:3000",
+    });
+    //https://alexisbrr-dev.auth0.com/.well-known/jwks.json here are the cookies of the session
+  };
+  getAccessToken = () => {
+    const accessToken = localStorage.getItem("access_token");
+    if (!accessToken) {
+      throw new Error("No access token found");
+    }
+    return accessToken;
+  };
+  getProfile = (cb) => {
+    if (this.userProfile) return cb(this.userProfile);
+    this.auth0.client.userInfo(this.getAccessToken(), (err, profile) => {
+      if (profile) this.userProfile = profile;
+      cb(profile, err);
+      //the method userInfo requires the accesstoken of the user to take bake all the info
+    });
   };
 }
 /*
 http://localhost:3000/callback#
 access_token=aShZ92w6tnIKqqkdJJdt17JwzsGIXytA
 &
-scope=openid%20profile%20email
-&
-expires_in=7200 expare en seconds
-&
-token_type=Bearer 
-&
-state=3s2GbryyGNQ.bEi5JJjIhfNhXq.qP2FQ encrypted secret value  used by auth0that we are the originating app
-&
-id_token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IngxRHY3WklGWG93THRFX043TGNRUSJ9.eyJnaXZlbl9uYW1lIjoiV2lsbGlhbSIsImZhbWlseV9uYW1lIjoiQ2FsZGVyw7NuIiwibmlja25hbWUiOiJnaXVuYXVsYXdpbGxpYW0iLCJuYW1lIjoiV2lsbGlhbSBDYWxkZXLDs24iLCJwaWN0dXJlIjoiaHR0cHM6Ly9saDUuZ29vZ2xldXNlcmNvbnRlbnQuY29tLy1sRGxrTXFTUFRsby9BQUFBQUFBQUFBSS9BQUFBQUFBQUFBQS9BQUtXSkpPY0VFRm5XWDEzTEg0WFdWYnJYTnlLNmdCYWR3L3Bob3RvLmpwZyIsImxvY2FsZSI6ImVzIiwidXBkYXRlZF9hdCI6IjIwMjAtMDQtMjRUMjI6NTY6MjYuMDQwWiIsImVtYWlsIjoiZ2l1bmF1bGF3aWxsaWFtQGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczovL2FsZXhpc2Jyci1kZXYuYXV0aDAuY29tLyIsInN1YiI6Imdvb2dsZS1vYXV0aDJ8MTE2OTMwMzgzMzAxNTYwNDU1MTE0IiwiYXVkIjoiRWdVQ2NveWRHZHNYMDlHT3pudzQ4NmVpWHRhNGlHZVMiLCJpYXQiOjE1ODc3Njg5OTAsImV4cCI6MTU4NzgwNDk5MCwiYXRfaGFzaCI6Ilp5QW9wZzcxQmU4cjJEZVpNN29GQ2ciLCJub25jZSI6InM0UDNTM1BNeTh6VWdodzlfb2cxWjg1aEtsenVxblljIn0.Ukt02NnofaF0OcCuLkYXZxje5imHmmGJ6MUMaXW7_lVfE03dqxlsl0ythTS4UVu6b4A0zYfx-bWiImsJ5UU5l1n_b9LUODclN8qRYiRZR9c-Tu2QNXqKAbydo1BVjlzuwhafvsuIzKI9hVONt0agG1SLPDfob49B_AnhSP9WObc0CdUfRU_K1zVtDQbg--iL7Qv2L36j5dbL1FhVOrue1cMjTTEl9XFIZujMp9Eau0HbsB54UvzLYt3JAgFU_7vn-Z9Hgezkki0G-uaT-LpF-s4u2fTrUTcyG-fFqwwqBYn8PoHyMGzAD-vS17E0bHhzklXFQTOvSVesdmdoKxA3lA
+
 */
