@@ -5,12 +5,14 @@ export default class Auth {
     // console.log(process.env.REACT_APP_CLIENT_ID);
     this.history = history;
     this.userProfile = null;
+    this.requestedScopes = "openid profile email read:courses";
     this.auth0 = new auth0.WebAuth({
       domain: process.env.REACT_APP_AUTH0_DOMAIN,
       clientID: process.env.REACT_APP_AUTH0_CLIENT_ID,
       redirectUri: process.env.REACT_APP_AUTH0_CALLBACK_URL,
       responseType: "token id_token", //id_token says, give us a JWT token to authenticate the user when they login ** and token says give an ccess token so the user can make api calls
-      scope: "openid profile email", //permissions, this means we want openid to authentication so the JWT will include the basic info of a jtw ; when the user signs up, for the first time they ll be presented with a content screen so they can consent to us using his data
+      scope: this.requestedScopes, //permissions, this means we want openid to authentication so the JWT will include the basic info of a jtw ; when the user signs up, for the first time they ll be presented with a content screen so they can consent to us using his data
+      audience: process.env.REACT_APP_AUTH0_AUDIENCE,
     });
   }
   login = () => {
@@ -34,9 +36,17 @@ export default class Auth {
       authResult.expiresIn * 1000 + new Date().getTime() //this is the way to calcute the expire time in unix epoch time (number of ms since 1970)
     ); //   authResult.expiresIn =time en seconds
     //  console.log(authResult);
+
+    // if there is no value on the scope param from auth result
+    //use it to set scopes in the session for the user. Otherwise
+    //use the scopes as requested. if no scopes were requested,
+    //set it to nothing
+    const scopes = authResult.scope || this.requestedScopes || "";
+
     localStorage.setItem("access_token", authResult.accessToken);
     localStorage.setItem("id_token", authResult.idToken);
     localStorage.setItem("expires_at", expireAt);
+    localStorage.setItem("scopes", JSON.stringify(scopes)); //by setting in local storage it may be possible to tamper the data, however the api calls will receive the access_token and parse it to determine the user's authorization
   };
   isAuthenticated = () => {
     const expireAt = JSON.parse(localStorage.getItem("expires_at"));
@@ -46,6 +56,7 @@ export default class Auth {
     localStorage.removeItem("access_token");
     localStorage.removeItem("id_token");
     localStorage.removeItem("expires_at");
+    localStorage.removeItem("scopes");
     this.userProfile = null;
     //this is how we log out the user session localy, however its not logout i nthe sv
     //in summary we are removing the local store but nor the cookie, in order to erase the cookie and also log out from the sv
@@ -70,6 +81,11 @@ export default class Auth {
       //the method userInfo requires the accesstoken of the user to take bake all the info
     });
   };
+  userHasScopes(scopes) {
+    const grantedScopes = (JSON.parse(localStorage.getItem("scopes")) || "") //it checks for the local storage scopes if there is not scopes in  localstorage then it defaults to an empty string
+      .split(" ");
+    return scopes.every((scope) => grantedScopes.includes(scope));
+  }
 }
 /*
 http://localhost:3000/callback#
