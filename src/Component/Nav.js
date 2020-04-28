@@ -23,6 +23,7 @@ class Nav extends React.Component {
         <li>
           <Link to="/public">Public</Link>
         </li>
+        <li>{isAuthenticated() && <Link to="/private">Private</Link>}</li>
       </ul>
     );
   }
