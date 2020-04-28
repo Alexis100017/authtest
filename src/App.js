@@ -5,6 +5,8 @@ import { Route, Redirect } from "react-router-dom";
 import { Home, Profile, Nav, Callback } from "./Component";
 import Auth from "./Auth/Auth";
 import Public from "./Public";
+import Private from "./Private";
+import Courses from "./Courses";
 class App extends React.Component {
   constructor(props) {
     super(props); //funcional components dont allow constructor
@@ -36,6 +38,20 @@ class App extends React.Component {
             render={(props) => <Callback auth={this.auth} {...props} />}
           ></Route>
           <Route path="/public" component={Public}></Route>
+          <Route
+            path="/private"
+            render={(props) =>
+              this.auth.isAuthenticated() ? (
+                <Private auth={this.auth} {...props} />
+              ) : (
+                this.auth.login
+              )
+            }
+          ></Route>
+          <Route
+            path="/courses"
+            render={(props) => <Courses auth={this.auth} {...props} />}
+          ></Route>
         </div>
       </>
     );
